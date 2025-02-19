@@ -12,26 +12,26 @@ public class TileEffects : MonoBehaviour
 
     public bool startLerpIn = false;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        LerpIn();
-    }
+    // void Start()
+    // {
+    //     LerpIn();
+    // }
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (isLerpingIn)
-            LerpIn();
-        
-        if (isLerpingOut)
-            LerpOut();
+    // // Update is called once per frame
+    // void Update()
+    // {
+    //     if (isLerpingIn)
+    //         LerpIn();
 
-        if (startLerpIn)
-        {
-            LerpIn();
-            startLerpIn = false;
-        }
-    }
+    //     if (isLerpingOut)
+    //         LerpOut();
+
+    //     if (startLerpIn)
+    //     {
+    //         LerpIn();
+    //         startLerpIn = false;
+    //     }
+    // }
 
     public void LerpIn()
     {
@@ -65,7 +65,7 @@ public class TileEffects : MonoBehaviour
         }
 
         isLerpingOut = true;
-        
+
         transform.Translate(Physics.gravity * Time.deltaTime, Space.World);
         transform.Rotate(fallDirection);
     }

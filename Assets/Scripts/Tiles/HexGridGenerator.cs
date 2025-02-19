@@ -1,41 +1,58 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+
+public enum TileType
+{
+    Void,
+    Island,
+    Resource
+}
+
+[Serializable]
+public class TileProperties
+{
+    public TileType type;
+    [Range(0f, 1f)]
+    public float frequency;
+    public Color tileColour;
+}
 
 public class HexGridGenerator : MonoBehaviour
 {
-    [SerializeField] private int gridSize = 10;
-    public GameObject tile;
-    private float sqrt3 = Mathf.Sqrt(3);
+    [SerializeField] private int radius = 3;
+    public GameObject tilePrefab;
+    public int seed = 1;
+    public float noiseScale = 0.1f;
+    public Vector2Int startPosition;
 
+    public TileProperties[] tileProperties;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    public Color borderColour = Color.red;
+
+    private readonly float sqrt3 = Mathf.Sqrt(3);
+
+    // TODO Change so that this stores a script with reference to the tile information instead of the GameObject itself
+    private Dictionary<Vector2Int, GameObject> tileDictionary = new();
+    private Dictionary<Vector2Int, TileType> tileTypes = new();
+
     void Start()
     {
-        float size = tile.GetComponent<Renderer>().bounds.size.z * 0.5f;
-        Debug.Log(size);
-        // Print(tile.transform.bounds.size.x);
-        /*for (int i = 0; i < gridSize; ++i)
-        {
-            for (int j = 0; j < gridSize; ++j)
-            {
-                GameObject newTile = Instantiate(tile);
-                float adjustment = j % 2 == 0 ? 0.0f : sqrt3 * size * 0.5f;
-                newTile.transform.position = new Vector3(i * sqrt3 * size + adjustment, 0, j * 0.75f);
-            }
-        }*/
-        Vector2Int startPos = new Vector2Int(0, 0);
-        SpawnInRings(3, startPos.x, startPos.y);
-    }
+        SpawnInRings(radius, startPosition.x, startPosition.y);
+        ConnectIsland();
+        MarkSurroundingArea();
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        // Debug Code
+        foreach (KeyValuePair<Vector2Int, TileType> tileType in tileTypes)
+        {
+            GameObject tile = tileDictionary[tileType.Key];
+            tile.name += $" {tileType.Value}";
+        }
     }
 
     public void SpawnInRings(int range, int startX, int startY)
     {
-        float size = tile.GetComponent<Renderer>().bounds.size.z; // Point to point height
+        float size = tilePrefab.GetComponent<Renderer>().bounds.size.z; // Point to point height
         float hexWidth = sqrt3 * size * 0.5f;
         float hexHeight = size * 0.75f;
 
@@ -44,28 +61,160 @@ public class HexGridGenerator : MonoBehaviour
         float worldStartZ = startY * hexHeight;
         if (startY % 2 != 0) worldStartX += hexWidth * 0.5f; // Offset for odd rows
 
-        Vector3 startPosition = new Vector3(worldStartX, 0, worldStartZ); // World position (Incase we need to use it from player idk)
+        Vector3 startPosition = new(worldStartX, 0, worldStartZ); // World position (Incase we need to use it from player idk)
 
+        // Loop over rows (y-axis) relative to the center.
         for (int yPos = -range; yPos <= range; yPos++)
         {
+            int yAbsHalf = Math.Abs(yPos) / 2;
             int xMod = yPos % 2 == 0 ? 0 : 1;
-        
-            for (int xPos = -(range - Math.Abs(yPos / 2)); xPos <= range - Math.Abs(yPos / 2) - xMod; xPos++)
+            int rangeMinusYAbsHalf = range - yAbsHalf;
+
+            for (int xPos = -rangeMinusYAbsHalf; xPos <= (rangeMinusYAbsHalf - xMod); xPos++)
             {
                 // Spawn  as a child of spawner to clean shit up
-                GameObject newTile = Instantiate(tile, transform);
-            
+                GameObject newTile = Instantiate(tilePrefab, transform);
+
                 float adjustment = yPos % 2 == 0 ? 0.0f : hexWidth * 0.5f;
-            
-                Vector3 localPosition = new Vector3(xPos * hexWidth + adjustment, 0, yPos * hexHeight);
-            
+
+                Vector3 localPosition = new(xPos * hexWidth + adjustment, 0, yPos * hexHeight);
+
                 // Offset ffs unity
                 newTile.transform.position = startPosition + localPosition;
-                
-                //Need to fix this to show real coords. maybe. who knows
-                newTile.gameObject.name = $"Tile: {xPos + startX}, {yPos + startY}";
+
+                Vector2Int offsetCoordinates = new(xPos + startX, yPos + startY);
+                newTile.name = $"Tile: {offsetCoordinates.x}, {offsetCoordinates.y}";
+
+                TileType type = (offsetCoordinates == Vector2Int.zero)
+                                ? TileType.Island
+                                : DetermineTileType(offsetCoordinates);
+                tileTypes[offsetCoordinates] = type;
+
+                // Should cache renderer
+                Color tileColour = GetColourForTileType(type);
+                newTile.GetComponent<Renderer>().material.color = tileColour;
+
+                tileDictionary[offsetCoordinates] = newTile;
             }
         }
     }
 
+    private TileType DetermineTileType(Vector2Int coord)
+    {
+        float noiseX = (coord.x + seed) * noiseScale;
+        float noiseY = (coord.y + seed) * noiseScale;
+        float noiseValue = Mathf.PerlinNoise(noiseX, noiseY);
+
+        float total = 0f;
+        foreach (TileProperties tileProperty in tileProperties)
+        {
+            total += tileProperty.frequency;
+            if (noiseValue < total)
+                return tileProperty.type;
+        }
+        return tileProperties[^1].type;
+    }
+
+    private Color GetColourForTileType(TileType type)
+    {
+        foreach (TileProperties tileProperties in tileProperties)
+        {
+            if (tileProperties.type == type)
+                return tileProperties.tileColour;
+        }
+        return Color.white;
+    }
+
+    private void ConnectIsland()
+    {
+        Vector2Int center = Vector2Int.zero;
+        if (!tileTypes.ContainsKey(center))
+            return;
+
+        // Force the center tile to be island
+        tileTypes[center] = TileType.Island;
+
+        HashSet<Vector2Int> connected = new();
+        Queue<Vector2Int> queue = new();
+        queue.Enqueue(center);
+        connected.Add(center);
+
+        while (queue.Count > 0)
+        {
+            Vector2Int current = queue.Dequeue();
+            foreach (Vector2Int neighbor in GetNeighborCoordinates(current))
+            {
+                if (tileTypes.ContainsKey(neighbor) && tileTypes[neighbor] == TileType.Island && !connected.Contains(neighbor))
+                {
+                    connected.Add(neighbor);
+                    queue.Enqueue(neighbor);
+                }
+            }
+        }
+
+        // Change any tile that isn't connected to type void
+        // TEST to see if this creates a bug where the player could spawn on a void tile
+        foreach (var kvp in new Dictionary<Vector2Int, TileType>(tileTypes))
+        {
+            if (kvp.Value == TileType.Island && !connected.Contains(kvp.Key))
+            {
+                tileTypes[kvp.Key] = TileType.Void;
+                if (tileDictionary.ContainsKey(kvp.Key))
+                {
+                    tileDictionary[kvp.Key].GetComponent<Renderer>().material.color = GetColourForTileType(TileType.Void);
+                }
+            }
+        }
+    }
+
+    private void MarkSurroundingArea()
+    {
+        foreach (var kvp in tileDictionary)
+        {
+            Vector2Int coordinate = kvp.Key;
+            GameObject tile = kvp.Value;
+            if (tileTypes[coordinate] == TileType.Void)
+                continue;
+
+            foreach (Vector2Int neighbor in GetNeighborCoordinates(coordinate))
+            {
+                if (tileTypes.ContainsKey(neighbor) && tileTypes[neighbor] == TileType.Void)
+                {
+                    tile.GetComponent<Renderer>().material.color = borderColour;
+                    break;
+                }
+            }
+        }
+    }
+
+    private Vector2Int[] GetNeighborCoordinates(Vector2Int coordinate)
+    {
+        Vector2Int[] evenOffsets = new Vector2Int[]
+        {
+            new(1, 0),
+            new(0, -1),
+            new(-1, -1),
+            new(-1, 0),
+            new(-1, 1),
+            new(0, 1)
+        };
+
+        Vector2Int[] oddOffsets = new Vector2Int[]
+        {
+            new(1, 0),
+            new(1, -1),
+            new(0, -1),
+            new(-1, 0),
+            new(0, 1),
+            new(1, 1)
+        };
+
+        Vector2Int[] offsets = (coordinate.y % 2 == 0) ? evenOffsets : oddOffsets;
+        Vector2Int[] neighbors = new Vector2Int[6];
+        for (int neighbourIndex = 0; neighbourIndex < 6; ++neighbourIndex)
+        {
+            neighbors[neighbourIndex] = coordinate + offsets[neighbourIndex];
+        }
+        return neighbors;
+    }
 }

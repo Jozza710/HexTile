@@ -455,8 +455,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 717075a9fa5b7ae4ea2e0671a9307596, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridSize: 10
-  tile: {fileID: 9089366150080605769, guid: 08732181af7ab9042b74ee42b4695e1b, type: 3}
+  radius: 20
+  tilePrefab: {fileID: 9089366150080605769, guid: 08732181af7ab9042b74ee42b4695e1b, type: 3}
+  seed: 254
+  noiseScale: 0.1
+  startPosition: {x: 0, y: 0}
+  tileProperties:
+  - type: 1
+    frequency: 0.55
+    tileColour: {r: 0.05301428, g: 1, b: 0, a: 0}
+  - type: 2
+    frequency: 0.1
+    tileColour: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 0}
+  - type: 0
+    frequency: 0.25
+    tileColour: {r: 0, g: 0, b: 0, a: 0}
+  borderColour: {r: 1, g: 1, b: 1, a: 1}
 --- !u!4 &1312694278
 Transform:
   m_ObjectHideFlags: 0
