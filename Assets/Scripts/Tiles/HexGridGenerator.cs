@@ -25,6 +25,7 @@ public class HexGridGenerator : MonoBehaviour
     public int seed = 1;
     public float noiseScale = 0.1f;
     public Vector2Int startPosition;
+    public bool connectIsland = true;
 
     public TileProperties[] tileProperties;
 
@@ -36,10 +37,18 @@ public class HexGridGenerator : MonoBehaviour
     private Dictionary<Vector2Int, GameObject> tileDictionary = new();
     private Dictionary<Vector2Int, TileType> tileTypes = new();
 
+    [ContextMenu("Generate")]
     void Start()
     {
+        foreach (GameObject tile in tileDictionary.Values)
+            Destroy(tile);
+
+        tileDictionary.Clear();
+        tileTypes.Clear();
+
         SpawnInRings(radius, startPosition.x, startPosition.y);
-        ConnectIsland();
+        if (connectIsland)
+            ConnectIsland();
         MarkSurroundingArea();
 
         // Debug Code
@@ -209,7 +218,9 @@ public class HexGridGenerator : MonoBehaviour
             new(1, 1)
         };
 
-        Vector2Int[] offsets = (coordinate.y % 2 == 0) ? evenOffsets : oddOffsets;
+        bool startEven = startPosition.y % 2 == 0;
+        bool coordinateEven = coordinate.y % 2 == 0;
+        Vector2Int[] offsets = (startEven == coordinateEven) ? evenOffsets : oddOffsets;
         Vector2Int[] neighbors = new Vector2Int[6];
         for (int neighbourIndex = 0; neighbourIndex < 6; ++neighbourIndex)
         {
