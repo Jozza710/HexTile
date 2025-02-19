@@ -18,26 +18,26 @@ public class TileEffects : MonoBehaviour
     // }
 
     // // Update is called once per frame
-    // void Update()
-    // {
-    //     if (isLerpingIn)
-    //         LerpIn();
+    void Update()
+    {
+        if (isLerpingIn)
+            LerpIn();
 
-    //     if (isLerpingOut)
-    //         LerpOut();
+        if (isLerpingOut)
+            LerpOut();
 
-    //     if (startLerpIn)
-    //     {
-    //         LerpIn();
-    //         startLerpIn = false;
-    //     }
-    // }
+        if (startLerpIn)
+        {
+            LerpIn();
+            startLerpIn = false;
+        }
+    }
 
     public void LerpIn()
     {
         if (!isLerpingIn)
         {
-            transform.position += Vector3.down * 10;
+            transform.position += Vector3.down * (10 + Random.Range(-2.5f, 2.5f));
             isLerpingIn = true;
         }
 
@@ -50,7 +50,7 @@ public class TileEffects : MonoBehaviour
         {
             transform.position = new Vector3(transform.position.x, 0, transform.position.z);
             isLerpingIn = false;
-            LerpOut();
+            //LerpOut();
         }
     }
 

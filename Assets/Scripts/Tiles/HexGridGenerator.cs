@@ -104,6 +104,9 @@ public class HexGridGenerator : MonoBehaviour
                 newTile.GetComponent<Renderer>().material.color = tileColour;
 
                 tileDictionary[offsetCoordinates] = newTile;
+                
+                // Lerp in At a Slightly Random Height
+                newTile.GetComponent<TileEffects>().startLerpIn = true;
             }
         }
     }
