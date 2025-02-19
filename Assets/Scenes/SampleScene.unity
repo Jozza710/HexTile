@@ -464,7 +464,7 @@ MonoBehaviour:
   tileProperties:
   - type: 1
     frequency: 0.55
-    tileColour: {r: 0.05301428, g: 1, b: 0, a: 0}
+    tileColour: {r: 0.21182705, g: 0.4528302, b: 0.1986472, a: 0}
   - type: 2
     frequency: 0.1
     tileColour: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 0}
